@@ -3,14 +3,17 @@ const app = express();
 const cors = require("cors");
 const port = 3042;
 
+const { generateAccounts } = require("./scripts/generate-accounts");
+
 app.use(cors());
 app.use(express.json());
 
-const balances = {
-  "0x1": 100,
-  "0x2": 50,
-  "0x3": 75,
-};
+const balances = {};
+const accounts = generateAccounts(3);
+for (const account of accounts) {
+  balances[account] = Math.floor(Math.random() * 1000);
+}
+console.log(balances);
 
 app.get("/balance/:address", (req, res) => {
   const { address } = req.params;
