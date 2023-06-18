@@ -3,6 +3,9 @@ const app = express();
 const cors = require("cors");
 const port = 3042;
 
+const { secp256k1 } = require("ethereum-cryptography/secp256k1");
+const { toHex } = require("ethereum-cryptography/utils");
+
 const { generateAccounts } = require("./scripts/generate-accounts");
 
 app.use(cors());
@@ -17,22 +20,32 @@ console.log(balances);
 
 app.get("/balance/:address", (req, res) => {
   const { address } = req.params;
-  const balance = balances[address] || 0;
+
+  const privateKey = Buffer.from(address.slice(2), "hex");
+  const publicKey = secp256k1.getPublicKey(privateKey);
+  const senderPublicKey = `0x${toHex(publicKey)}`;
+
+  const balance = balances[senderPublicKey] || 0;
   res.send({ balance });
 });
 
 app.post("/send", (req, res) => {
   const { sender, recipient, amount } = req.body;
 
-  setInitialBalance(sender);
+  const privateKey = Buffer.from(sender.slice(2), "hex");
+  const publicKey = secp256k1.getPublicKey(privateKey);
+  const senderPublicKey = `0x${toHex(publicKey)}`;
+
+
+  setInitialBalance(senderPublicKey);
   setInitialBalance(recipient);
 
-  if (balances[sender] < amount) {
+  if (balances[senderPublicKey] < amount) {
     res.status(400).send({ message: "Not enough funds!" });
   } else {
-    balances[sender] -= amount;
+    balances[senderPublicKey] -= amount;
     balances[recipient] += amount;
-    res.send({ balance: balances[sender] });
+    res.send({ balance: balances[senderPublicKey] });
   }
 });
 
