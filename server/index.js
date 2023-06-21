@@ -20,32 +20,31 @@ console.log(balances);
 
 app.get("/balance/:address", (req, res) => {
   const { address } = req.params;
-
-  const privateKey = Buffer.from(address.slice(2), "hex");
-  const publicKey = secp256k1.getPublicKey(privateKey);
-  const senderPublicKey = `0x${toHex(publicKey)}`;
-
-  const balance = balances[senderPublicKey] || 0;
+  const balance = balances[address] || 0;
   res.send({ balance });
 });
 
 app.post("/send", (req, res) => {
-  const { sender, recipient, amount } = req.body;
+  const { message, messageHash, signature } = req.body;
+  const { sender, recipient, amount } = JSON.parse(message);
 
-  const privateKey = Buffer.from(sender.slice(2), "hex");
-  const publicKey = secp256k1.getPublicKey(privateKey);
-  const senderPublicKey = `0x${toHex(publicKey)}`;
+  // const senderPublicKey = `0x${toHex(secp256k1.recoverPublicKey(messageHash, signature))}`;
 
+  const isSigned = secp256k1.verify(signature, messageHash, sender);
+  
+  if (!isSigned) {
+    res.status(400).send({ message: "Invalid signature!" });
+  }
 
-  setInitialBalance(senderPublicKey);
+  setInitialBalance(sender);
   setInitialBalance(recipient);
 
-  if (balances[senderPublicKey] < amount) {
+  if (balances[sender] < amount) {
     res.status(400).send({ message: "Not enough funds!" });
   } else {
-    balances[senderPublicKey] -= amount;
+    balances[sender] -= amount;
     balances[recipient] += amount;
-    res.send({ balance: balances[senderPublicKey] });
+    res.send({ balance: balances[sender] });
   }
 });
 
